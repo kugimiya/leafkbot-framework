@@ -8,6 +8,7 @@
     "minecraft-data": "^2.95.0",
     "mineflayer": "^3.11.2",
     "mineflayer-pathfinder": "^1.8.0",
+    "mineflayer-web-inventory": "^1.6.3",
     "prismarine-viewer": "^1.20.0"
   }
 }

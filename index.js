@@ -6,6 +6,7 @@ const kbot = new KBot({
   password: process.env.BOT_PASSWORD,
   host: process.env.BOT_TARGET_HOST,
   port: process.env.BOT_TARGET_PORT,
+  version: '1.12.2',
 });
 
 const manager = new KBotManager(kbot);
@@ -13,6 +14,220 @@ const manager = new KBotManager(kbot);
 kbot.bot.on('spawn', () => {
   kbot.bot.waitForChunksToLoad();
 });
+
+const directions = {
+  south: [0,  1],
+  west:  [-1, 0],
+  north: [0, -1],
+  east:  [1,  0],
+};
+
+let workingArea = [];
+let chestsCoordinates = [];
+
+kbot.addCommand('scan.area', async (self) => {
+  const raycast = (direction, start) => {
+    let position = start.offset(0, 0, 0);
+    let collisionDetected = false;
+
+    while (!collisionDetected) {
+      position = position.offset(direction[0], 0, direction[1]);
+      const refBlock = self.bot.blockAt(position);
+
+      if (refBlock.displayName !== 'Air') {
+        collisionDetected = true;
+      }
+    }
+
+    return position;
+  }
+
+  const startPosition = self.bot.entity.position;
+
+  const [
+    southCollision,
+    westCollision,
+    northCollision,
+    eastCollision,
+  ] = [
+    raycast(directions.south, startPosition),
+    raycast(directions.west, startPosition),
+    raycast(directions.north, startPosition),
+    raycast(directions.east, startPosition),
+  ];
+
+  workingArea = [
+    new self.Vec3(eastCollision.x, startPosition.y, southCollision.z),
+    new self.Vec3(eastCollision.x, startPosition.y, northCollision.z),
+    new self.Vec3(westCollision.x, startPosition.y, northCollision.z),
+    new self.Vec3(westCollision.x, startPosition.y, southCollision.z),
+  ];
+});
+
+
+kbot.addCommand('scan.chests', async (self) => {
+  const shouldSkip = [];
+  const initialPosition = workingArea[0].offset(0, 0, 0);
+  const checkSkip = (x, z) => (position) => (
+    Math.floor(position.x) === Math.floor(x) 
+    && Math.floor(position.z) === Math.floor(z)
+  );
+
+  for (let z = workingArea[0].z; z >= workingArea[1].z; z -= 1) {
+    for (let x = workingArea[0].x; x >= workingArea[3].x; x -= 1) {
+      const refBlockPos = new self.Vec3(x, initialPosition.y, z);
+      const refBlock = self.bot.blockAt(refBlockPos);
+
+      // Иногда может быть null
+      if (!refBlock) {
+        continue;
+      }
+
+      // Пропускаем всё, что не сундук
+      if (refBlock.displayName !== 'Chest') {
+        continue;
+      }
+
+      // Пропускаем тот сундук, что нужно пропустить, т.к. он двойной
+      if (shouldSkip.some(checkSkip(x, z))) {
+        continue;
+      }
+
+      // Сканим область на предмет 2го сундука
+      for (let dirKey in directions) {
+        const dir = directions[dirKey];
+        const chestSibling = self.bot.blockAt(refBlockPos.offset(dir[0], 0, dir[1]));
+
+        if (chestSibling && chestSibling.displayName === 'Chest') {
+          shouldSkip.push(refBlockPos.offset(dir[0], 0, dir[1]));
+        }
+      }
+
+      chestsCoordinates.push(refBlockPos);
+    }
+  }
+
+  console.log(chestsCoordinates);
+});
+
+
+kbot.addCommand('build.scaffold', async (self) => {
+  let currentPosition = self.bot.entity.position;
+
+  for await (let dir of Object.values(directions)) {
+    const [offsetX, offsetZ] = dir;
+
+    for (let i = 0; i <= 18; i += 1) {
+      await self.bot.placeBlock(
+        self.bot.blockAt(
+          currentPosition.offset(0, -1, 0),
+        ),
+        new self.Vec3(offsetX, 0, offsetZ),
+        () => {}
+      );
+
+      await self.bot.placeBlock(
+        self.bot.blockAt(
+          currentPosition.offset(offsetX, 0, offsetZ)
+        ),
+        new self.Vec3(0, 1, 0),
+        () => {}
+      );
+      
+      const { x, y, z } = currentPosition.offset(offsetX, 1, offsetZ);
+      await self.moveTo(x, y, z);
+
+      currentPosition = currentPosition.offset(offsetX, 1, offsetZ);
+    }
+  }
+});
+
+
+kbot.addCommand('build.plato', async (self) => {
+  await self.moveTo(540, 84, 490);
+  let startPosition = new self.Vec3(540, 84, 490);
+  let spiralCenter = startPosition.offset(-11, 0, -10);
+
+  const buildAtX = async (x1, x2, startPos) => {
+    let pos = startPos;
+
+    if (x1 > x2) {
+      for (let x = x1; x > x2; x -= 1) {
+        await self.bot.placeBlock(
+          self.bot.blockAt(pos.offset(0, -1, 0)),
+          new self.Vec3(-1, 0, 0),
+          () => {}
+        );
+
+        pos = pos.offset(-1, 0, 0);
+
+        await self.moveTo(pos.x, pos.y, pos.z);
+      }
+    } else {
+      for (let x = x2; x > x1; x -= 1) {
+        await self.bot.placeBlock(
+          self.bot.blockAt(pos.offset(0, -1, 0)),
+          new self.Vec3(1, 0, 0),
+          () => {}
+        );
+
+        pos = pos.offset(1, 0, 0);
+
+        await self.moveTo(pos.x, pos.y, pos.z);
+      }
+    }
+
+    return pos;
+  }
+
+  const buildAtZ = async (z1, z2, startPos) => {
+    let pos = startPos;
+
+    if (z1 > z2) {
+      for (let x = z1; x > z2; x -= 1) {
+        await self.bot.placeBlock(
+          self.bot.blockAt(pos.offset(0, -1, 0)),
+          new self.Vec3(0, 0, -1),
+          () => {}
+        );
+
+        pos = pos.offset(0, 0, -1);
+
+        await self.moveTo(pos.x, pos.y, pos.z);
+      }
+    } else {
+      for (let x = z2; x > z1; x -= 1) {
+        await self.bot.placeBlock(
+          self.bot.blockAt(pos.offset(0, -1, 0)),
+          new self.Vec3(0, 0, 1),
+          () => {}
+        );
+
+        pos = pos.offset(0, 0, 1);
+
+        await self.moveTo(pos.x, pos.y, pos.z);
+      }
+    }
+
+    return pos;
+  }
+
+  let nextPos = self.bot.entity.position;
+  nextPos = await buildAtX(startPosition.x, spiralCenter.x, nextPos);
+  nextPos = await buildAtZ(startPosition.z, spiralCenter.z, nextPos);
+
+  await manager.processSpiralPath(
+    spiralCenter, 
+    19, 
+    async (refBlock) => refBlock.displayName !== 'Air', 
+    async (_self, refBlock) => {
+      await _self.bot.placeBlock(refBlock, new _self.Vec3(0, 1, 0), () => {});
+    },
+    () => {},
+  );
+});
+
+
 
 kbot.addCommand('kbot.come', async (self, username, message) => {
   const { x, y, z } = self.bot.players[username].entity.position;
