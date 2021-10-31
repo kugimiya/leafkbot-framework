@@ -117,7 +117,7 @@ kbot.addCommand('build.scaffold', async (self) => {
   for await (let dir of Object.values(directions)) {
     const [offsetX, offsetZ] = dir;
 
-    for (let i = 0; i <= 18; i += 1) {
+    for (let i = 0; i <= 19; i += 1) {
       await self.bot.placeBlock(
         self.bot.blockAt(
           currentPosition.offset(0, -1, 0),
@@ -142,11 +142,35 @@ kbot.addCommand('build.scaffold', async (self) => {
   }
 });
 
+async function switchBlock(blockId) {
+  const blk = await kbot.bot.inventory.findInventoryItem(blockId, null);
+  await kbot.bot.equip(blk, 'hand', () => {});
+}
+
+async function buildFundament(blockId, startVertex, endVertex) {
+  for (let x = startVertex.x; x >= endVertex.x; x -= 2) {
+    for (let z = startVertex.z; z <= endVertex.z; z += 2) {
+      kbot.addTask(async (self) => {
+        await switchBlock(blockId);
+
+        const placementBlock = self.bot.blockAt(new self.Vec3(x, startVertex.y, z));
+        if (placementBlock.displayName !== 'Air') {
+          return;
+        }
+
+        const refBlock = self.bot.blockAt(new self.Vec3(x, startVertex.y - 1, z));
+        await self.gotoBlock(refBlock);
+        await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0));
+      });
+    }
+  }
+}
 
 kbot.addCommand('build.plato', async (self) => {
-  await self.moveTo(540, 84, 490);
-  let startPosition = new self.Vec3(540, 84, 490);
-  let spiralCenter = startPosition.offset(-11, 0, -10);
+  await switchBlock(1);
+
+  let startPosition = new self.Vec3(86, 4, 346);
+  let spiralCenter = startPosition.offset(-10, 0, 10);
 
   const buildAtX = async (x1, x2, startPos) => {
     let pos = startPos;
@@ -212,18 +236,45 @@ kbot.addCommand('build.plato', async (self) => {
     return pos;
   }
 
-  let nextPos = self.bot.entity.position;
-  nextPos = await buildAtX(startPosition.x, spiralCenter.x, nextPos);
-  nextPos = await buildAtZ(startPosition.z, spiralCenter.z, nextPos);
+  // Нулевой шаг -- идём к центру будущей платформы
+  // let nextPos = self.bot.entity.position;
+  // nextPos = await buildAtX(startPosition.x, spiralCenter.x, nextPos);
+  // nextPos = await buildAtZ(startPosition.z, spiralCenter.z, nextPos);
 
+  await self.moveTo(spiralCenter.x, spiralCenter.y + 1, spiralCenter.z);
+
+  // Первый шаг -- платформа
   await manager.processSpiralPath(
-    spiralCenter, 
-    19, 
+    spiralCenter.offset(0, 1, 0), 
+    19,
     async (refBlock) => refBlock.displayName !== 'Air', 
     async (_self, refBlock) => {
       await _self.bot.placeBlock(refBlock, new _self.Vec3(0, 1, 0), () => {});
     },
     () => {},
+  );
+
+  // Второй шаг -- края платформы
+  await manager.processBorder(
+    [startPosition.offset(-1, 1, 1), startPosition.offset(-19, 1, 19)],
+    async (refBlock) => refBlock.displayName !== 'Air',
+    async (_self, refBlock) => {
+      await _self.bot.placeBlock(refBlock, new _self.Vec3(0, 1, 0), () => {});
+    }
+  );
+
+  // Третий шаг -- песочек
+  await buildFundament(
+    12,
+    startPosition.offset(-3, 1, 3),
+    startPosition.offset(-17, 1, 17)
+  );
+
+  // Четвертый шаг -- кактусы
+  await buildFundament(
+    81,
+    startPosition.offset(-3, 2, 3),
+    startPosition.offset(-17, 2, 17)
   );
 });
 
