@@ -1,6 +1,8 @@
 require('dotenv').config();
 const { KBot, KBotManager } = require('./lib');
 
+console.clear();
+
 const kbot = new KBot({
   username: process.env.BOT_USERNAME,
   password: process.env.BOT_PASSWORD,
@@ -110,175 +112,70 @@ kbot.addCommand('scan.chests', async (self) => {
   console.log(chestsCoordinates);
 });
 
-
-kbot.addCommand('build.scaffold', async (self) => {
-  let currentPosition = self.bot.entity.position;
-
-  for await (let dir of Object.values(directions)) {
-    const [offsetX, offsetZ] = dir;
-
-    for (let i = 0; i <= 19; i += 1) {
-      await self.bot.placeBlock(
-        self.bot.blockAt(
-          currentPosition.offset(0, -1, 0),
-        ),
-        new self.Vec3(offsetX, 0, offsetZ),
-        () => {}
-      );
-
-      await self.bot.placeBlock(
-        self.bot.blockAt(
-          currentPosition.offset(offsetX, 0, offsetZ)
-        ),
-        new self.Vec3(0, 1, 0),
-        () => {}
-      );
+kbot.addCommand('test', async bot => {
+  await manager.processScaffoldPath(
+    bot.bot.entity.position, 
+    20,
+    // Платформа!!!
+    async (iteration, spiralCenter, self, currentPosition) => {
+      const tasks = [];
       
-      const { x, y, z } = currentPosition.offset(offsetX, 1, offsetZ);
-      await self.moveTo(x, y, z);
-
-      currentPosition = currentPosition.offset(offsetX, 1, offsetZ);
-    }
-  }
-});
-
-async function switchBlock(blockId) {
-  const blk = await kbot.bot.inventory.findInventoryItem(blockId, null);
-  await kbot.bot.equip(blk, 'hand', () => {});
-}
-
-async function buildFundament(blockId, startVertex, endVertex) {
-  for (let x = startVertex.x; x >= endVertex.x; x -= 2) {
-    for (let z = startVertex.z; z <= endVertex.z; z += 2) {
-      kbot.addTask(async (self) => {
-        await switchBlock(blockId);
-
-        const placementBlock = self.bot.blockAt(new self.Vec3(x, startVertex.y, z));
-        if (placementBlock.displayName !== 'Air') {
-          return;
-        }
-
-        const refBlock = self.bot.blockAt(new self.Vec3(x, startVertex.y - 1, z));
-        await self.gotoBlock(refBlock);
-        await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0));
+      // Нулевой шаг -- идём к центру будущей платформы
+      tasks.push(async _self => {
+        await _self.moveTo(spiralCenter.x, spiralCenter.y + iteration, spiralCenter.z);
       });
-    }
-  }
-}
 
-kbot.addCommand('build.plato', async (self) => {
-  await switchBlock(1);
+      // Первый шаг -- платформа
+      (
+        await manager.processSpiralPath(
+          spiralCenter.offset(0, 0, 0), 
+          19,
+          async (refBlock) => refBlock.displayName !== 'Air', 
+          async (self, refBlock) => await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0), () => {}),
+          () => {},
+        )
+      ).forEach(task => tasks.push(task));
 
-  let startPosition = new self.Vec3(86, 4, 346);
-  let spiralCenter = startPosition.offset(-10, 0, 10);
+      // Второй шаг -- края платформы
+      (
+        await manager.processBorderPath(
+          [currentPosition.offset(-1, 0, 1), currentPosition.offset(-19, 0, 19)],
+          async (refBlock) => refBlock.displayName !== 'Air',
+          async (self, refBlock) => await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0), () => {})
+        )
+      ).forEach(task => tasks.push(task));
 
-  const buildAtX = async (x1, x2, startPos) => {
-    let pos = startPos;
+      // Третий шаг -- песочек
+      (
+        await manager.processFundamentPath(
+          [currentPosition.offset(-3, 0, 3), currentPosition.offset(-17, 0, 17)], 
+          self.mcData.blocksByName['sand'].id, 
+          async (self, refBlock) => await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0), () => {})
+        )
+      ).forEach(task => tasks.push(task));
 
-    if (x1 > x2) {
-      for (let x = x1; x > x2; x -= 1) {
-        await self.bot.placeBlock(
-          self.bot.blockAt(pos.offset(0, -1, 0)),
-          new self.Vec3(-1, 0, 0),
-          () => {}
-        );
+      // Четвертый шаг -- кактусы
+      (
+        await manager.processFundamentPath(
+          [currentPosition.offset(-3, 0, 3), currentPosition.offset(-17, 0, 17)], 
+          self.mcData.blocksByName['cactus'].id, 
+          async (self, refBlock) => await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0), () => {})
+        )
+      ).forEach(task => tasks.push(task));
 
-        pos = pos.offset(-1, 0, 0);
+      // Пятый шаг -- заборчики
+      (
+        await manager.processFencesPath(
+          [currentPosition.offset(-4, 1, 3), currentPosition.offset(-17, 1, 17)],
+          self.mcData.blocksByName['fence'].id,
+          async (self, refBlock) => await self.bot.placeBlock(refBlock, new self.Vec3(0, 0, 1), () => {})
+        )
+      ).forEach(task => tasks.push(task));
 
-        await self.moveTo(pos.x, pos.y, pos.z);
-      }
-    } else {
-      for (let x = x2; x > x1; x -= 1) {
-        await self.bot.placeBlock(
-          self.bot.blockAt(pos.offset(0, -1, 0)),
-          new self.Vec3(1, 0, 0),
-          () => {}
-        );
-
-        pos = pos.offset(1, 0, 0);
-
-        await self.moveTo(pos.x, pos.y, pos.z);
-      }
-    }
-
-    return pos;
-  }
-
-  const buildAtZ = async (z1, z2, startPos) => {
-    let pos = startPos;
-
-    if (z1 > z2) {
-      for (let x = z1; x > z2; x -= 1) {
-        await self.bot.placeBlock(
-          self.bot.blockAt(pos.offset(0, -1, 0)),
-          new self.Vec3(0, 0, -1),
-          () => {}
-        );
-
-        pos = pos.offset(0, 0, -1);
-
-        await self.moveTo(pos.x, pos.y, pos.z);
-      }
-    } else {
-      for (let x = z2; x > z1; x -= 1) {
-        await self.bot.placeBlock(
-          self.bot.blockAt(pos.offset(0, -1, 0)),
-          new self.Vec3(0, 0, 1),
-          () => {}
-        );
-
-        pos = pos.offset(0, 0, 1);
-
-        await self.moveTo(pos.x, pos.y, pos.z);
-      }
-    }
-
-    return pos;
-  }
-
-  // Нулевой шаг -- идём к центру будущей платформы
-  // let nextPos = self.bot.entity.position;
-  // nextPos = await buildAtX(startPosition.x, spiralCenter.x, nextPos);
-  // nextPos = await buildAtZ(startPosition.z, spiralCenter.z, nextPos);
-
-  await self.moveTo(spiralCenter.x, spiralCenter.y + 1, spiralCenter.z);
-
-  // Первый шаг -- платформа
-  await manager.processSpiralPath(
-    spiralCenter.offset(0, 1, 0), 
-    19,
-    async (refBlock) => refBlock.displayName !== 'Air', 
-    async (_self, refBlock) => {
-      await _self.bot.placeBlock(refBlock, new _self.Vec3(0, 1, 0), () => {});
-    },
-    () => {},
+      return tasks;
+    } 
   );
-
-  // Второй шаг -- края платформы
-  await manager.processBorder(
-    [startPosition.offset(-1, 1, 1), startPosition.offset(-19, 1, 19)],
-    async (refBlock) => refBlock.displayName !== 'Air',
-    async (_self, refBlock) => {
-      await _self.bot.placeBlock(refBlock, new _self.Vec3(0, 1, 0), () => {});
-    }
-  );
-
-  // Третий шаг -- песочек
-  await buildFundament(
-    12,
-    startPosition.offset(-3, 1, 3),
-    startPosition.offset(-17, 1, 17)
-  );
-
-  // Четвертый шаг -- кактусы
-  await buildFundament(
-    81,
-    startPosition.offset(-3, 2, 3),
-    startPosition.offset(-17, 2, 17)
-  );
-});
-
-
+})
 
 kbot.addCommand('kbot.come', async (self, username, message) => {
   const { x, y, z } = self.bot.players[username].entity.position;
@@ -286,8 +183,8 @@ kbot.addCommand('kbot.come', async (self, username, message) => {
 });
 
 kbot.addCommand('kbot.clear', async (self) => {
-  const height = 72;
-  const width = 17 * 8;
+  const height = 48;
+  const width = 24;
   const widthClear = width - 2;
   let startPosition = self.bot.entity.position;
 
