@@ -113,12 +113,14 @@ kbot.addCommand('scan.chests', async (self) => {
 });
 
 kbot.addCommand('test', async bot => {
+  const width = 20;
+
   await manager.processScaffoldPath(
     bot.bot.entity.position, 
-    20,
+    width,
     // Платформа!!!
     async (iteration, spiralCenter, self, currentPosition) => {
-      const tasks = [];
+      let tasks = [];
       
       // Нулевой шаг -- идём к центру будущей платформы
       tasks.push(async _self => {
@@ -126,51 +128,62 @@ kbot.addCommand('test', async bot => {
       });
 
       // Первый шаг -- платформа
-      (
-        await manager.processSpiralPath(
-          spiralCenter.offset(0, 0, 0), 
-          19,
+      tasks = [
+        ...tasks,
+        ...(await manager.processSpiralPath(
+          spiralCenter.offset(0, iteration, 0), 
+          width - 1,
           async (refBlock) => refBlock.displayName !== 'Air', 
-          async (self, refBlock) => await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0), () => {}),
+          async (self, refBlock) => {
+            await self.switchBlock(self.mcData.blocksByName['stone'].id);
+            await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0), () => {});
+          },
           () => {},
-        )
-      ).forEach(task => tasks.push(task));
+        ))
+      ];
 
       // Второй шаг -- края платформы
-      (
-        await manager.processBorderPath(
-          [currentPosition.offset(-1, 0, 1), currentPosition.offset(-19, 0, 19)],
+      tasks = [
+        ...tasks,
+        ...(await manager.processBorderPath(
+          [currentPosition.offset(-1, 0, 1), currentPosition.offset(-1 * (width - 1), 0, (width - 1))],
           async (refBlock) => refBlock.displayName !== 'Air',
-          async (self, refBlock) => await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0), () => {})
-        )
-      ).forEach(task => tasks.push(task));
+          async (self, refBlock) => {
+            await self.switchBlock(self.mcData.blocksByName['stone'].id);
+            await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0), () => {});
+          }
+        ))
+      ];
 
       // Третий шаг -- песочек
-      (
-        await manager.processFundamentPath(
-          [currentPosition.offset(-3, 0, 3), currentPosition.offset(-17, 0, 17)], 
+      tasks = [
+        ...tasks,
+        ...(await manager.processFundamentPath(
+          [currentPosition.offset(-3, 0, 3), currentPosition.offset(-1 * (width - 3), 0, width - 3)], 
           self.mcData.blocksByName['sand'].id, 
           async (self, refBlock) => await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0), () => {})
-        )
-      ).forEach(task => tasks.push(task));
+        ))
+      ];
 
       // Четвертый шаг -- кактусы
-      (
-        await manager.processFundamentPath(
-          [currentPosition.offset(-3, 0, 3), currentPosition.offset(-17, 0, 17)], 
+      tasks = [
+        ...tasks,
+        ...(await manager.processFundamentPath(
+          [currentPosition.offset(-3, 0, 3), currentPosition.offset(-1 * (width - 3), 0, width - 3)], 
           self.mcData.blocksByName['cactus'].id, 
           async (self, refBlock) => await self.bot.placeBlock(refBlock, new self.Vec3(0, 1, 0), () => {})
-        )
-      ).forEach(task => tasks.push(task));
+        ))
+      ];
 
       // Пятый шаг -- заборчики
-      (
-        await manager.processFencesPath(
-          [currentPosition.offset(-4, 1, 3), currentPosition.offset(-17, 1, 17)],
+      tasks = [
+        ...tasks,
+        ...(await manager.processFencesPath(
+          [currentPosition.offset(-4, 2, 3), currentPosition.offset(-1 * (width - 3), 2, width - 3)],
           self.mcData.blocksByName['fence'].id,
           async (self, refBlock) => await self.bot.placeBlock(refBlock, new self.Vec3(0, 0, 1), () => {})
-        )
-      ).forEach(task => tasks.push(task));
+        ))
+      ];
 
       return tasks;
     } 
