@@ -6,6 +6,12 @@ import { sleep, SLEEPTIME_AFTER_MOVE } from '../utils';
 import { BlockName } from '../types/blockName';
 import { IProcessor } from '.';
 
+type ProcessParams = {
+  vertexCoordinates?: Vec3[], 
+  blockId?: BlockName,
+  processorCb?: (self: KBot, refBlock: Block) => Promise<void>
+};
+
 export default class FundamentProcessor extends IProcessor {
   /**
    * Генерирует координаты фундамента (я пока не определился, как правильно называть эти столбики-основания х))
@@ -40,21 +46,18 @@ export default class FundamentProcessor extends IProcessor {
    * @param {BlockName} blockId - айди блока, которым строить
    * @param {async (self: KBot, refBlock: Block) => Promise<void>} processorCb - Сам процессор блока (ломает/ставит/etc)
    */
-  async processPath(
-    vertexCoordinates?: Vec3[], 
-    blockId?: BlockName,
-    processorCb?: (self: KBot, refBlock: Block) => Promise<void>
-  ): Promise<TaskType[]> {
+  async processPath(params?: ProcessParams): Promise<TaskType[]> {
     if (
-      vertexCoordinates === undefined ||
-      blockId === undefined ||
-      processorCb === undefined
+      params === undefined ||
+      params?.vertexCoordinates === undefined ||
+      params?.blockId === undefined ||
+      params?.processorCb === undefined
     ) {
       throw new Error('Params missed');
     }
 
+    const { vertexCoordinates, blockId, processorCb } = params;
     const tasks: TaskType[] = [];
-
     // Generate path
     const positions = await this.createPath(vertexCoordinates[0], vertexCoordinates[1]);
 

@@ -17,6 +17,17 @@ type SubPath = {
   facingVector: Vec3,
 }
 
+type ProcessParams = {
+  startPosition?: Vec3,
+  width?: number,
+  platformTasksCb?: (
+    iteration: number,
+    spiralCenter: Vec3,
+    bot: KBot, 
+    startPosition: Vec3,
+  ) => Promise<TaskType[]>,
+};
+
 export default class FencesProcessor extends IProcessor<Path> {
   generateBridge(startPosition?: Vec3, endPosition?: Vec3, direction?: string): SubPath[] {
     if (
@@ -174,24 +185,17 @@ export default class FencesProcessor extends IProcessor<Path> {
   /**
    * Создаёт пул задач для процессинга пути
    */
-  async processPath(
-    startPosition?: Vec3,
-    width?: number,
-    platformTasksCb?: (
-      iteration: number,
-      spiralCenter: Vec3,
-      bot: KBot, 
-      startPosition: Vec3,
-    ) => Promise<TaskType[]>,
-  ): Promise<TaskType[]> {
+  async processPath(params?: ProcessParams): Promise<TaskType[]> {
     if (
-      startPosition === undefined ||
-      width === undefined ||
-      platformTasksCb === undefined
+      params === undefined ||
+      params?.startPosition === undefined ||
+      params?.width === undefined ||
+      params?.platformTasksCb === undefined
     ) {
       throw new Error('Params missed');
     }
 
+    const { startPosition, width, platformTasksCb } = params;
     const tasks: TaskType[] = [];
     const spiralCenter = startPosition.offset((width / 2) * -1, 0, width / 2);
     const scaffoldPath = await this.createPath(

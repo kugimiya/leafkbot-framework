@@ -5,6 +5,12 @@ import KBot from '../bot';
 import { TaskType } from '../scheduler';
 import { sleep, SLEEPTIME_AFTER_MOVE } from '../utils';
 
+type ProcessParams = {
+  vertexCoordinates?: [Vec3, Vec3], 
+  blockSkipCb?: (refBlock: Block) => Promise<boolean>, 
+  processorCb?: (self: KBot, refBlock: Block) => Promise<void>,
+}
+
 export default class BorderProcessor extends IProcessor {
   /**
    * Генерирует координаты пути
@@ -69,21 +75,18 @@ export default class BorderProcessor extends IProcessor {
    * @param {async (refBlock: Block) => Promise<boolean>} blockSkipCb - Должен ответить, нужно ли скипать блок
    * @param {async (_self: KBot, refBlock: Block) => Promise<void>} processorCb - Сам процессор блока (ломает/ставит/etc)
    */
-  async processPath(
-    vertexCoordinates?: [Vec3, Vec3], 
-    blockSkipCb?: (refBlock: Block) => Promise<boolean>, 
-    processorCb?: (self: KBot, refBlock: Block) => Promise<void>,
-  ): Promise<TaskType[]> {
+  async processPath(params?: ProcessParams): Promise<TaskType[]> {
     if (
-      vertexCoordinates === undefined ||
-      blockSkipCb === undefined ||
-      processorCb === undefined
+      params === undefined ||
+      params?.vertexCoordinates === undefined ||
+      params?.blockSkipCb === undefined ||
+      params?.processorCb === undefined
     ) {
       throw new Error('Params missed');
     }
 
+    const { vertexCoordinates, blockSkipCb, processorCb } = params;
     const tasks: TaskType[] = [];
-
     // Generate path
     const positions = await this.createPath(vertexCoordinates);
   

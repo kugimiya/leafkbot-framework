@@ -5,6 +5,14 @@ import KBot from '../bot';
 import { TaskType } from '../scheduler';
 import { distanceTo, MAX_TO_BLOCK_DISTANCE, sleep, SLEEPTIME_AFTER_MOVE } from '../utils';
 
+type ProcessParams = {
+  startPosition?: Vec3, 
+  width?: number, 
+  blockSkipCb?: (refBlock: Block | null) => Promise<boolean>, 
+  processorCb?: (_self: KBot, refBlock: Block | null) => Promise<void>, 
+  startBlockCb?: (_self: KBot, refBlock: Block | null) => Promise<void>,
+};
+
 export default class SpiralProcessor extends IProcessor {
   /**
    * Генерирует координаты спирального пути
@@ -97,32 +105,21 @@ export default class SpiralProcessor extends IProcessor {
 
   /**
    * Создаёт пул задач для процессинга спирального пути в заданных координатах
-   * 
-   * @param {Vec3} startPosition 
-   * @param {number} width 
-   * @param {async (refBlock: Block) => Promise<boolean>} blockSkipCb - Должен ответить, нужно ли скипать блок
-   * @param {async (_self: KBot, refBlock: Block) => Promise<void>} processorCb - Сам процессор блока (ломает/ставит/etc)
-   * @param {async (_self: KBot, refBlock: Block) => Promise<void>} startBlockCb - Пост-процессор начального блока (центра спирали)
    */
-  async processPath(
-    startPosition?: Vec3, 
-    width?: number, 
-    blockSkipCb?: (refBlock: Block | null) => Promise<boolean>, 
-    processorCb?: (_self: KBot, refBlock: Block | null) => Promise<void>, 
-    startBlockCb?: (_self: KBot, refBlock: Block | null) => Promise<void>,
-  ): Promise<TaskType[]> {
+  async processPath(params?: ProcessParams): Promise<TaskType[]> {
     if (
-      startPosition === undefined ||
-      width === undefined ||
-      blockSkipCb === undefined ||
-      processorCb === undefined ||
-      startBlockCb === undefined
+      params === undefined ||
+      params?.startPosition === undefined ||
+      params?.width === undefined ||
+      params?.blockSkipCb === undefined ||
+      params?.processorCb === undefined ||
+      params?.startBlockCb === undefined
     ) {
       throw new Error('Params missed');
     }
 
+    const { startPosition, width, blockSkipCb, processorCb, startBlockCb } = params;
     const tasks: TaskType[] = [];
-
     const offsets = [
       { x: 1,  y: 0, z: 0 },
       { x: 1,  y: 0, z: 1 },

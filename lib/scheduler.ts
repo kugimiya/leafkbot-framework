@@ -58,13 +58,12 @@ export default class KBotScheduler {
     }
   }
 
-  async runProcessor<T = IProcessor>(
-    processorClass: Newable<T>, 
-    startProcessor: (processor: T) => Promise<TaskType[]>,
+  async runProcessor<T extends IProcessor>(
+    processorClass: Newable<T>,
+    ...processorArgs: Parameters<T['processPath']>
   ): Promise<void> {
     const processor = new processorClass(this.bot);
-    const tasks = startProcessor(processor);
-
-    (await tasks).forEach(task => this.tasks.push(task));
+    const tasksGenerator = processor.processPath.bind(processor, ...processorArgs);
+    (await tasksGenerator()).forEach(task => this.tasks.push(task));
   }
 }

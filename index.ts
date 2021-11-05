@@ -31,17 +31,17 @@ scheduler.addCommand('goto_zero', async (self, username) => {
 scheduler.addCommand('clear_level', async (self) => {
   const width = 24;
 
-  await scheduler.runProcessor(SpiralProcessor, (proc) => {
-    return proc.processPath(
-      self.position,
-      width,
-      async refBlock => refBlock?.position === null ? false : !self.blockIs('air', refBlock?.position),
-      async (self, refBlock) => {
-        if (refBlock) {
-          await self.bot.placeBlock(refBlock, new Vec3(0, 1, 0), () => {});
-        }
-      },
-      async () => {},
-    );
-  })
+  await scheduler.runProcessor(SpiralProcessor, {
+    startPosition: self.position,
+    width: width,
+    blockSkipCb: async refBlock => {
+      return refBlock?.position === null ? false : !self.blockIs('air', refBlock?.position)
+    },
+    processorCb: async (self, refBlock) => {
+      if (refBlock) {
+        await self.bot.placeBlock(refBlock, new Vec3(0, 1, 0), () => {});
+      }
+    },
+    startBlockCb: async () => {},
+  });
 });
