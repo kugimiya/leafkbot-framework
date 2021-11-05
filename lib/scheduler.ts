@@ -1,6 +1,6 @@
-import KBot from "./bot";
-import { IProcessor } from "./processors";
-import { Newable } from "./types/Newable";
+import KBot from './bot';
+import { IProcessor } from './processors';
+import { Newable } from './types/Newable';
 
 export type TaskType = (self: KBot) => Promise<void>;
 export type CommandType = (self: KBot, username: string, message: string) => Promise<void>;

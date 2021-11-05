@@ -1,9 +1,9 @@
 require('dotenv').config();
 
-import { Vec3 } from "vec3";
-import KBot from "./lib/bot";
-import { SpiralProcessor } from "./lib/processors";
-import KBotScheduler from "./lib/scheduler";
+import { Vec3 } from 'vec3';
+import KBot from './lib/bot';
+import { SpiralProcessor } from './lib/processors';
+import KBotScheduler from './lib/scheduler';
 
 console.clear();
 

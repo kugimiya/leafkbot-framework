@@ -1,4 +1,4 @@
-import { Vec3 } from "vec3";
+import { Vec3 } from 'vec3';
 
 const distanceTo = (position0: Vec3, position1: Vec3): number => {
   let distanceToBlk = Math.sqrt(

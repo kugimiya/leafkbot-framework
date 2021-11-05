@@ -1,6 +1,6 @@
-import { Vec3 } from "vec3";
-import KBot from "../bot";
-import { TaskType } from "../scheduler";
+import { Vec3 } from 'vec3';
+import KBot from '../bot';
+import { TaskType } from '../scheduler';
 
 export default class IProcessor<T = Vec3> {
   DEBUG = true;
@@ -35,7 +35,7 @@ export default class IProcessor<T = Vec3> {
   }
 
   /**
-   * Создаёт пул задач для процессинга пути "в середине"
+   * Создаёт пул задач для процессинга пути 'в середине'
    */
   async hook(): Promise<TaskType[]> {
     return [];

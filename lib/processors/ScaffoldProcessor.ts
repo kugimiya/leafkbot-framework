@@ -1,8 +1,8 @@
-import { Vec3 } from "vec3";
-import { IProcessor } from ".";
-import KBot from "../bot";
-import { TaskType } from "../scheduler";
-import { distanceTo, MAX_TO_BLOCK_DISTANCE, sleep, SLEEPTIME_AFTER_MOVE } from "../utils";
+import { Vec3 } from 'vec3';
+import { IProcessor } from '.';
+import KBot from '../bot';
+import { TaskType } from '../scheduler';
+import { distanceTo, MAX_TO_BLOCK_DISTANCE, sleep, SLEEPTIME_AFTER_MOVE } from '../utils';
 
 type Path = {
   position: Vec3,
@@ -252,7 +252,7 @@ export default class FencesProcessor extends IProcessor<Path> {
       // Начинаем с постройки пути до центра платформы
       this.debug(`Do path to center @ ${spiralCenter} ['y' dont make sense here]`);
 
-      // Если это первый шаг, путь будет "вылезать на" лестницу и мешать
+      // Если это первый шаг, путь будет 'вылезать на' лестницу и мешать
       // Надо создавать из немного иной позиции 
       let bridgePath;
 
@@ -302,7 +302,7 @@ export default class FencesProcessor extends IProcessor<Path> {
   }
 
   /**
-   * Создаёт пул задач для процессинга пути "в середине"
+   * Создаёт пул задач для процессинга пути 'в середине'
    */
   async hook(): Promise<TaskType[]> {
     return [];

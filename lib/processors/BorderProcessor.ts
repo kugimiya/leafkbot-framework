@@ -1,9 +1,9 @@
-import { Block } from "prismarine-block";
-import { Vec3 } from "vec3";
-import { IProcessor } from ".";
-import KBot from "../bot";
-import { TaskType } from "../scheduler";
-import { sleep, SLEEPTIME_AFTER_MOVE } from "../utils";
+import { Block } from 'prismarine-block';
+import { Vec3 } from 'vec3';
+import { IProcessor } from '.';
+import KBot from '../bot';
+import { TaskType } from '../scheduler';
+import { sleep, SLEEPTIME_AFTER_MOVE } from '../utils';
 
 export default class BorderProcessor extends IProcessor {
   /**

@@ -1,10 +1,10 @@
-import { Block } from "prismarine-block";
-import { Vec3 } from "vec3";
-import KBot from "../bot";
-import { TaskType } from "../scheduler";
-import { sleep, SLEEPTIME_AFTER_MOVE } from "../utils";
-import { BlockName } from "../types/blockName";
-import { IProcessor } from ".";
+import { Block } from 'prismarine-block';
+import { Vec3 } from 'vec3';
+import KBot from '../bot';
+import { TaskType } from '../scheduler';
+import { sleep, SLEEPTIME_AFTER_MOVE } from '../utils';
+import { BlockName } from '../types/blockName';
+import { IProcessor } from '.';
 
 export default class FencesProcessor extends IProcessor {
   /**
