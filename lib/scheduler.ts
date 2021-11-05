@@ -64,6 +64,7 @@ export default class KBotScheduler {
   ): Promise<void> {
     const processor = new processorClass(this.bot);
     const tasksGenerator = processor.processPath.bind(processor, ...processorArgs);
-    (await tasksGenerator()).forEach(task => this.tasks.push(task));
+
+    this.tasks.concat(await tasksGenerator());
   }
 }
